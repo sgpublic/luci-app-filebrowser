@@ -8,20 +8,14 @@ local api = require "luci.model.cbi.filebrowser.api"
 function index()
     if not nixio.fs.access("/etc/config/filebrowser") then return end
 
-    entry({"admin", "services"}, firstchild(), "Services", 44).dependent = false
-    entry({"admin", "services", "filebrowser"}, cbi("filebrowser/settings"),
-          _("File Browser"), 2).dependent = true
+    entry({"admin", "nas"}, firstchild(), _("NAS"), 44).dependent = false
+    entry({"admin", "nas", "filebrowser"}, cbi("filebrowser/settings"), _("File Browser"), 2).dependent = true
 
-    entry({"admin", "services", "filebrowser", "check"}, call("action_check")).leaf =
-        true
-    entry({"admin", "services", "filebrowser", "download"}, call("action_download")).leaf =
-        true
-    entry({"admin", "services", "filebrowser", "status"}, call("act_status")).leaf =
-        true
-    entry({"admin", "services", "filebrowser", "get_log"}, call("get_log")).leaf =
-        true
-    entry({"admin", "services", "filebrowser", "clear_log"}, call("clear_log")).leaf =
-        true
+    entry({"admin", "nas", "filebrowser", "check"}, call("action_check")).leaf = true
+    entry({"admin", "nas", "filebrowser", "download"}, call("action_download")).leaf = true
+    entry({"admin", "nas", "filebrowser", "status"}, call("act_status")).leaf = true
+    entry({"admin", "nas", "filebrowser", "get_log"}, call("get_log")).leaf = true
+    entry({"admin", "nas", "filebrowser", "clear_log"}, call("clear_log")).leaf = true
 end
 
 local function http_write_json(content)
@@ -53,7 +47,17 @@ function action_download()
     http_write_json(json)
 end
 
-function get_log()
-    luci.http.write(luci.sys.exec("[ -f '/var/log/filebrowser.log' ] && cat /var/log/filebrowser.log"))
+function get_log()  local log = {}
+    if nixio.fs.access('/var/log/filebrowser.log') then
+        log.data = nixio.fs.readfile('/var/log/filebrowser.log')
+    else
+        log.data = ""
+    end
+    http_write_json(log)
 end
-function clear_log() luci.sys.call("echo '' > /var/log/filebrowser.log") end
+
+function clear_log()
+    if nixio.fs.access('/var/log/filebrowser.log') then
+        nixio.fs.remove('/var/log/filebrowser.log')
+    end
+end

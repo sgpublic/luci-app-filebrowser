@@ -12,12 +12,12 @@ local api_url =
 
 local wget = "/usr/bin/wget"
 local wget_args = {
-    "--no-check-certificate", "--quiet", "--timeout=10", "--tries=2"
+    "--no-check-certificate", "--quiet", "--timeout=10"
 }
 local command_timeout = 300
 
-local LEDE_BOARD = nil
-local DISTRIB_TARGET = nil
+local LEDE_BOARD
+local DISTRIB_TARGET
 
 function uci_get_type(type, config, default)
     value = uci:get_first(appname, type, config, default) or sys.exec(
@@ -31,7 +31,9 @@ end
 
 local function _unpack(t, i)
     i = i or 1
-    if t[i] ~= nil then return t[i], _unpack(t, i + 1) end
+    if t[i] ~= nil then
+        return t[i], _unpack(t, i + 1)
+    end
 end
 
 local function exec(cmd, args, writer, timeout)
@@ -166,13 +168,13 @@ end
 local function get_api_json(url)
     local jsonc = require "luci.jsonc"
 
-    local output = {}
+    --local output = {}
     -- exec(wget, { "-O-", url, _unpack(wget_args) },
     --	function(chunk) output[#output + 1] = chunk end)
     -- local json_content = util.trim(table.concat(output))
 
     local json_content = luci.sys.exec(wget ..
-                                           " --no-check-certificate --timeout=10 -t 1 -O- " ..
+                                           " --no-check-certificate --timeout=10 -O- " ..
                                            url)
 
     if json_content == "" then return {} end
@@ -244,8 +246,7 @@ function to_download(url)
 
     sys.call("/bin/rm -f /tmp/filebrowser_download.*")
 
-    local tmp_file = util.trim(util.exec(
-                                   "mktemp -u -t filebrowser_download.XXXXXX"))
+    local tmp_file = util.trim(util.exec("mktemp -u -t filebrowser_download.XXXXXX"))
 
     local result = exec(wget, {"-O", tmp_file, url, _unpack(wget_args)}, nil,
                         command_timeout) == 0
@@ -261,14 +262,13 @@ function to_download(url)
     return {code = 0, file = tmp_file}
 end
 
-function to_extract(file, subfix)
+function to_extract(file, _)
     if not file or file == "" or not fs.access(file) then
         return {code = 1, error = i18n.translate("File path required.")}
     end
 
     sys.call("/bin/rm -rf /tmp/filebrowser_extract.*")
-    local tmp_dir = util.trim(util.exec(
-                                  "mktemp -d -t filebrowser_extract.XXXXXX"))
+    local tmp_dir = util.trim(util.exec("mktemp -d -t filebrowser_extract.XXXXXX"))
 
     local output = {}
     exec("/bin/tar", {"-C", tmp_dir, "-zxvf", file},
